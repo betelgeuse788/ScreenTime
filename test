@@ -1,0 +1,102 @@
+package daily_usage;
+
+import java.time.Duration;
+import java.time.LocalTime;
+import java.util.ArrayList;
+
+import com.sun.jna.Native;
+import com.sun.jna.Pointer;
+import com.sun.jna.platform.win32.User32;
+import com.sun.jna.platform.win32.WinDef.HWND;
+import com.sun.jna.platform.win32.WinDef.RECT;
+import com.sun.jna.platform.win32.WinUser.WNDENUMPROC;
+
+public class ScreenTime2 {
+	private static ArrayList<String> hwndInfoList = null;
+	static final LocalTime firstTime = LocalTime.now();
+	public void Screen() {
+		try {
+			System.out.println("[실행중인 프로그램 정보]");
+	        System.out.println();
+	        
+	        hwndInfoList = new ArrayList<String>();
+	        
+	        ScreenTime2 instance = new ScreenTime2();
+	        instance.printAllHwndInformations();
+	        
+	        //스크린 타임(실행중인 프로그램 정보) 창
+	        int count = hwndInfoList.size();
+	        for (int i=0; i<count; i++) {
+	            System.out.print("(" + (i+1) + "/" + count + ") ");
+	            System.out.println(hwndInfoList.get(i));    
+	        }
+	        
+	        System.out.println("END");
+	        
+			} catch(Exception e) {
+	            e.printStackTrace();
+	        }
+			
+	        try {
+	            // wait for 0.5 minutes after run , 갱신
+	            Thread.sleep(1000 * 30);
+	        } catch (Exception e) {
+	            // ignore
+	        }
+	}
+	private void printAllHwndInformations() throws Exception {
+        try {
+            User32.INSTANCE.EnumWindows(new WNDENUMPROC() {
+                public boolean callback(HWND hwnd, Pointer arg1) {
+                    char[] windowText = new char[512];
+                    User32.INSTANCE.GetWindowText(hwnd, windowText, 512);
+                    String wText = Native.toString(windowText);
+
+                    RECT rectangle = new RECT();
+                    User32.INSTANCE.GetWindowRect(hwnd, rectangle);
+
+                    // 숨겨져 있는 창은 제외하고 찾기
+                    if (wText.isEmpty() || !(User32.INSTANCE.IsWindowVisible(hwnd))) {
+                        return true;
+                    }
+
+                    // 핸들(hwnd)의 클래스 네임 가져오기
+                    char[] c = new char[512];
+                    User32.INSTANCE.GetClassName(hwnd, c, 512);
+                    String clsName = String.valueOf(c).trim();
+                    
+                    // 실행 시간 구하기
+                    LocalTime now = LocalTime.now();
+                    Duration duration = Duration.between(firstTime, now);          
+                    //한계: 새로운 프로그램을 실행하면 RUNTIME 값이 기존 프로그램과 동일한 오류
+                                      
+                    StringBuilder buff = new StringBuilder();
+                    
+                    buff.append("\n").append("CLASSNAME : ").append(clsName);
+                    buff.append(" / ").append("TEXT : ").append(wText);
+                    buff.append("\n").append("RUNTIME : ").append(duration.getSeconds()).append(" second");
+                    
+                    hwndInfoList.add(buff.toString());
+                    
+                    return true;
+                }
+            }, null);
+
+        } catch (Exception e) {
+            throw e;
+
+	}
+
+	}
+
+	public static void main(String[] args) {
+	
+	//일정시간 주기로 콘솔 창을 업데이트 하기 위한 반복문
+	while(true) {
+	ScreenTime2 screen = new ScreenTime2();
+	screen.Screen();
+
+    
+	}
+    }
+}
